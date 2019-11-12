@@ -5,7 +5,7 @@ A Flutter plugin for using the native Box SDKs to access the Box Storage
 
 ## How do I use it? 
 
-· initSession() – this will launch the login page, where the user needs to give his credentials to access his box storage
+· **initSession()** – this will launch the login page, where the user needs to give his credentials to access his box storage
 
 · endSession() – logout the session(current session).
 
