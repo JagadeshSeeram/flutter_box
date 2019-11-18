@@ -21,7 +21,9 @@ class FlutterBox {
       if (sessionStatus != null && sessionStatus == "SUCCESS") {
         status = Status.SUCCESS;
       }
-    } on PlatformException catch (e) {}
+    } on PlatformException catch (e) {
+      print(e.message);
+    }
     return status;
   }
 
@@ -35,7 +37,7 @@ class FlutterBox {
         status = Status.SUCCESS;
       }
     } on PlatformException catch (e) {
-      log('data: $e');
+      print(e.message);
     }
     return status;
   }
@@ -44,36 +46,56 @@ class FlutterBox {
     Status status = Status.FAILURE;
     try {
       final String sessionStatus =
-      await _channel.invokeMethod('isAuthenticated');
+          await _channel.invokeMethod('isAuthenticated');
       if (sessionStatus != null && sessionStatus == "SUCCESS") {
         status = Status.SUCCESS;
       }
-    } on PlatformException catch (e) {}
+    } on PlatformException catch (e) {
+      print(e.message);
+    }
     return status;
   }
 
   static Future<Status> uploadFile(String filePath, String folderId) async {
     Status status = Status.FAILURE;
     try {
-      final String sessionStatus = await _channel
-          .invokeMethod('uploadFile', {"filePath": filePath, "folderId": folderId});
+      final String sessionStatus = await _channel.invokeMethod(
+          'uploadFile', {"filePath": filePath, "folderId": folderId});
       if (sessionStatus != null && sessionStatus == "SUCCESS") {
         status = Status.SUCCESS;
       }
-    } on PlatformException catch (e) {}
+    } on PlatformException catch (e) {
+      print(e.message);
+    }
     return status;
+  }
+
+  static Future<String> downloadFile(
+      String targetFilePath, String fileId) async {
+    String targetFile;
+    try {
+      final String sessionStatus = await _channel.invokeMethod(
+          'downloadFile', {"targetFilePath": targetFilePath, "fileId": fileId});
+      if (sessionStatus != null) {
+        targetFile = sessionStatus;
+      }
+    } on PlatformException catch (e) {
+      print(e.message);
+    }
+    return targetFile;
   }
 
   static Future<List<BoxIteratorItems>> get loadRootFolder async {
     List<BoxIteratorItems> boxIteratorItems;
     try {
       final String sessionStatus =
-      await _channel.invokeMethod('loadRootFolder');
+          await _channel.invokeMethod('loadRootFolder');
       List<dynamic> list = json.decode(sessionStatus);
       boxIteratorItems = list
           .map<BoxIteratorItems>((json) => BoxIteratorItems.fromJson(json))
           .toList();
     } on PlatformException catch (e) {
+      print(e.message);
       boxIteratorItems = List();
     }
     return boxIteratorItems;
@@ -83,12 +105,13 @@ class FlutterBox {
     List<BoxIteratorItems> boxIteratorItems;
     try {
       final String sessionStatus =
-      await _channel.invokeMethod('loadFolderItems', folderId);
+          await _channel.invokeMethod('loadFolderItems', folderId);
       List<dynamic> list = json.decode(sessionStatus);
       boxIteratorItems = list
           .map<BoxIteratorItems>((json) => BoxIteratorItems.fromJson(json))
           .toList();
     } on PlatformException catch (e) {
+      print(e.message);
       boxIteratorItems = List();
     }
     return boxIteratorItems;

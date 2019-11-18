@@ -9,6 +9,7 @@ import com.box.androidsdk.content.BoxConstants;
 import com.box.androidsdk.content.BoxException;
 import com.box.androidsdk.content.BoxFutureTask;
 import com.box.androidsdk.content.auth.BoxAuthentication;
+import com.box.androidsdk.content.listeners.ProgressListener;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
 import com.box.androidsdk.content.models.BoxIteratorItems;
@@ -22,11 +23,8 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
+import io.flutter.Log;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
@@ -37,6 +35,7 @@ import io.flutter.plugin.common.PluginRegistry.Registrar;
  * FlutterBoxPlugin
  */
 public class FlutterBoxPlugin implements MethodCallHandler {
+    private static final String TAG = "FlutterBoxPlugin";
     private static Registrar registrar;
     private BoxSession mSession;
     private BoxApiFolder mFolderApi;
@@ -50,6 +49,7 @@ public class FlutterBoxPlugin implements MethodCallHandler {
     private static final String LOAD_ROOT_FOLDER = "loadRootFolder";
     private static final String LOAD_FOLDER_ITEMS = "loadFolderItems";
     private static final String UPLOAD_FILE = "uploadFile";
+    private static final String DOWNLOAD_FILE = "downloadFile";
 
     private static final String FAILURE = "FAILURE";
     private static final String SUCCESS = "SUCCESS";
@@ -107,6 +107,14 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                 String folderId = call.argument("folderId");
                 uploadFile(filePath, folderId);
             }
+        } else if (method.equals(DOWNLOAD_FILE)) {
+            if (mSession == null) {
+                initSession();
+            } else {
+                String fileId = call.argument("fileId");
+                String targetFilePath = call.argument("targetFilePath");
+                downloadFile(targetFilePath, fileId);
+            }
         } else {
             result.notImplemented();
         }
@@ -142,8 +150,13 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                         String folderId = call.arguments();
                         loadFolderItems(folderId);
                     } else if (call.method.equals(UPLOAD_FILE)) {
-                        String folderId = call.arguments();
-                        uploadFile(null, folderId);
+                        String filePath = call.argument("filePath");
+                        String folderId = call.argument("folderId");
+                        uploadFile(filePath, folderId);
+                    } else if (call.method.equals(DOWNLOAD_FILE)) {
+                        String fileId = call.argument("fileId");
+                        String targetFilePath = call.argument("targetFilePath");
+                        downloadFile(targetFilePath, fileId);
                     }
                 }
             }
@@ -237,33 +250,23 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                         folderId = "0";
                     }
                     BoxRequestsFile.UploadFile request;
-                    if (TextUtils.isEmpty(filePath)) {
-                        DateFormat df = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
-                        Date dateobj = new Date();
-                        String uploadName = df.format(dateobj);
-                        String uploadFileName = "box_logo.png";
-                        InputStream uploadStream = registrar.activeContext().
-                                getResources().getAssets().open(uploadFileName);
-                        request = mFileApi.getUploadRequest(uploadStream, uploadName, folderId);
-                    } else {
+                    if (!TextUtils.isEmpty(filePath)) {
                         request = mFileApi.getUploadRequest(new File(filePath), folderId);
+                        request.send();
+                        registrar.activity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                result.success(SUCCESS);
+                            }
+                        });
+                    } else {
+                        registrar.activity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                result.error(FAILURE, "Upload failure!", null);
+                            }
+                        });
                     }
-                    request.send();
-                    registrar.activity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            result.success(SUCCESS);
-                        }
-                    });
-
-                } catch (IOException e) {
-                    registrar.activity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            result.error(FAILURE, "Upload failure!", null);
-                        }
-                    });
-                    e.printStackTrace();
                 } catch (BoxException e) {
                     registrar.activity().runOnUiThread(new Runnable() {
                         @Override
@@ -271,12 +274,38 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                             result.error(FAILURE, "Upload failure!", null);
                         }
                     });
-
-                } finally {
                 }
             }
         }.start();
 
     }
+
+    private void downloadFile(final String targetFile, final String fileId) {
+        new Thread() {
+            @Override
+            public void run() {
+                Log.d(TAG, "Download File" + targetFile);
+                try {
+                    mFileApi.getDownloadRequest(new File(targetFile), fileId)
+                            .setProgressListener(new ProgressListener() {
+                                @Override
+                                public void onProgressChanged(long numBytes, long totalBytes) {
+                                    if (numBytes >= totalBytes) {
+                                        result.success(targetFile);
+                                    }
+                                }
+                            })
+                            .send();
+                } catch (BoxException e) {
+                    result.error(FAILURE, "Upload failure!", null);
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    result.error(FAILURE, "Upload failure!", null);
+                    e.printStackTrace();
+                }
+            }
+        }.start();
+    }
+
 
 }

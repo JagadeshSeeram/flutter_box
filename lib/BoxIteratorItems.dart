@@ -10,9 +10,8 @@ class BoxIteratorItems {
         name = json['name'],
         isFolder = json['is_folder'];
 
-  Map<String, dynamic> toJson() =>
-      {
-        'id' : id,
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'name': name,
         'is_folder': isFolder,
       };

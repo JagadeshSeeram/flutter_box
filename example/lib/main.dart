@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_box/BoxIteratorItems.dart';
 import 'package:flutter_box/flutter_box.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() => runApp(MyApp());
 
@@ -126,6 +127,19 @@ class _MyHomePageState extends State<MyHomePage> {
     } on PlatformException catch (e) {}
   }
 
+  downloadFile(String fileId) async {
+    try {
+      Directory appDocDir = await getExternalStorageDirectory();
+      String filePath = '${appDocDir.path}';
+      print(filePath);
+      var status = await FlutterBox.downloadFile(filePath, fileId);
+      if (status != null) {
+        print("AFTER------");
+        print(status);
+      }
+    } on PlatformException catch (e) {}
+  }
+
   File _image;
 
   Future getImage() async {
@@ -170,6 +184,8 @@ class _MyHomePageState extends State<MyHomePage> {
     if (boxIteratorItem.isFolder) {
       folderId = boxIteratorItem.id;
       loadFromFolder(boxIteratorItem.id);
+    } else {
+      downloadFile(boxIteratorItem.id);
     }
   }
 
