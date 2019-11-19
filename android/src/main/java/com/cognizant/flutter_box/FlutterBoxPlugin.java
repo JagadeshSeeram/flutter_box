@@ -9,7 +9,7 @@ import com.box.androidsdk.content.BoxConstants;
 import com.box.androidsdk.content.BoxException;
 import com.box.androidsdk.content.BoxFutureTask;
 import com.box.androidsdk.content.auth.BoxAuthentication;
-import com.box.androidsdk.content.listeners.ProgressListener;
+import com.box.androidsdk.content.models.BoxDownload;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
 import com.box.androidsdk.content.models.BoxIteratorItems;
@@ -251,7 +251,7 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                     }
                     BoxRequestsFile.UploadFile request;
                     if (!TextUtils.isEmpty(filePath)) {
-                        request = mFileApi.getUploadRequest(new File(filePath), folderId);
+                        request = mFileApi.getUploadRequest(new File(filePath), folderId).setFileName(new File(filePath).getName());
                         request.send();
                         registrar.activity().runOnUiThread(new Runnable() {
                             @Override
@@ -286,16 +286,14 @@ public class FlutterBoxPlugin implements MethodCallHandler {
             public void run() {
                 Log.d(TAG, "Download File" + targetFile);
                 try {
-                    mFileApi.getDownloadRequest(new File(targetFile), fileId)
-                            .setProgressListener(new ProgressListener() {
-                                @Override
-                                public void onProgressChanged(long numBytes, long totalBytes) {
-                                    if (numBytes >= totalBytes) {
-                                        result.success(targetFile);
-                                    }
-                                }
-                            })
+                    final BoxDownload download = mFileApi.getDownloadRequest(new File(targetFile), fileId)
                             .send();
+                    registrar.activity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            result.success(download.getOutputFile().getAbsolutePath());
+                        }
+                    });
                 } catch (BoxException e) {
                     result.error(FAILURE, "Upload failure!", null);
                     e.printStackTrace();
