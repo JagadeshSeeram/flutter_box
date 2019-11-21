@@ -1,6 +1,7 @@
 package com.cognizant.flutter_box;
 
 import android.text.TextUtils;
+import android.webkit.MimeTypeMap;
 
 import com.box.androidsdk.content.BoxApiFile;
 import com.box.androidsdk.content.BoxApiFolder;
@@ -13,6 +14,7 @@ import com.box.androidsdk.content.models.BoxDownload;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
 import com.box.androidsdk.content.models.BoxIteratorItems;
+import com.box.androidsdk.content.models.BoxOrder;
 import com.box.androidsdk.content.models.BoxSession;
 import com.box.androidsdk.content.requests.BoxRequestsFile;
 import com.box.androidsdk.content.requests.BoxResponse;
@@ -23,6 +25,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import io.flutter.Log;
 import io.flutter.plugin.common.MethodCall;
@@ -104,8 +107,9 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                 initSession();
             } else {
                 String filePath = call.argument("filePath");
+                String fileName = call.argument("fileName");
                 String folderId = call.argument("folderId");
-                uploadFile(filePath, folderId);
+                uploadFile(filePath, fileName, folderId);
             }
         } else if (method.equals(DOWNLOAD_FILE)) {
             if (mSession == null) {
@@ -152,7 +156,8 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                     } else if (call.method.equals(UPLOAD_FILE)) {
                         String filePath = call.argument("filePath");
                         String folderId = call.argument("folderId");
-                        uploadFile(filePath, folderId);
+                        String fileName = call.argument("fileName");
+                        uploadFile(filePath, fileName, folderId);
                     } else if (call.method.equals(DOWNLOAD_FILE)) {
                         String fileId = call.argument("fileId");
                         String targetFilePath = call.argument("targetFilePath");
@@ -214,12 +219,15 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                     } else {
                         folderItems = mFolderApi.getFolderWithAllItems(folderId).send().getItemCollection();
                     }
+                    ArrayList<BoxOrder> sortOrders = folderItems.getSortOrders();
                     final JSONArray jsonArray = new JSONArray();
                     for (BoxItem boxItem : folderItems) {
                         JSONObject jsonObject = new JSONObject();
                         try {
                             jsonObject.put("id", boxItem.getId());
                             jsonObject.put("name", boxItem.getName());
+//                            jsonObject.put("created_at", boxItem.getCreatedAt().getTime());
+//                            jsonObject.put("modified_at", boxItem.getModifiedAt().getTime());
                             jsonObject.put("is_folder", boxItem instanceof BoxFolder);
                             jsonArray.put(jsonObject);
                         } catch (JSONException e) {
@@ -240,7 +248,7 @@ public class FlutterBoxPlugin implements MethodCallHandler {
         }.start();
     }
 
-    private void uploadFile(final String filePath, final String destinationFolderId) {
+    private void uploadFile(final String filePath, final String fileName, final String destinationFolderId) {
         new Thread() {
             @Override
             public void run() {
@@ -251,7 +259,8 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                     }
                     BoxRequestsFile.UploadFile request;
                     if (!TextUtils.isEmpty(filePath)) {
-                        request = mFileApi.getUploadRequest(new File(filePath), folderId).setFileName(new File(filePath).getName());
+                        request = mFileApi.getUploadRequest(new File(filePath), folderId).setFileName(TextUtils.isEmpty(fileName) ?
+                                new File(filePath).getName() : fileName);
                         request.send();
                         registrar.activity().runOnUiThread(new Runnable() {
                             @Override
@@ -305,5 +314,15 @@ public class FlutterBoxPlugin implements MethodCallHandler {
         }.start();
     }
 
+
+    // url = file path or whatever suitable URL you want.
+    public String getMimeType(String url) {
+        String type = null;
+        String extension = MimeTypeMap.getFileExtensionFromUrl(url);
+        if (extension != null) {
+            type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+        }
+        return type;
+    }
 
 }

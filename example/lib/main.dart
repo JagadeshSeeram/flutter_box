@@ -134,10 +134,10 @@ class _MyHomePageState extends State<MyHomePage> {
       print(filePath);
       var status = await FlutterBox.downloadFile(filePath, fileId);
       if (status != null) {
-        print("AFTER------");
         print(status);
       }
-    } on PlatformException catch (e) {}
+    } on PlatformException catch (e) {
+    }
   }
 
   File _image;
