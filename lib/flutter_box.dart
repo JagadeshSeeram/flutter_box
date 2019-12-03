@@ -85,11 +85,15 @@ class FlutterBox {
     return targetFile;
   }
 
-  static Future<List<BoxIteratorItems>> get loadRootFolder async {
+  static Future<List<BoxIteratorItems>> loadRootFolder(
+      SortFilter sort, SortOrder sortOrder) async {
     List<BoxIteratorItems> boxIteratorItems;
     try {
       final String sessionStatus =
-          await _channel.invokeMethod('loadRootFolder');
+          await _channel.invokeMethod('loadRootFolder', {
+        "sort": sort.toString().split('.').last,
+        "sort_order": sortOrder.toString().split('.').last
+      });
       List<dynamic> list = json.decode(sessionStatus);
       boxIteratorItems = list
           .map<BoxIteratorItems>((json) => BoxIteratorItems.fromJson(json))
@@ -101,11 +105,53 @@ class FlutterBox {
     return boxIteratorItems;
   }
 
-  static Future<List<BoxIteratorItems>> loadFromFolders(String folderId) async {
+  static Future<List<BoxIteratorItems>> loadFromFoldersWithFilter(
+      String folderId, SortFilter sort, SortOrder sortOrder) async {
     List<BoxIteratorItems> boxIteratorItems;
     try {
       final String sessionStatus =
-          await _channel.invokeMethod('loadFolderItems', folderId);
+          await _channel.invokeMethod('loadFolderItems', {
+        "folder_id": folderId,
+        "sort": sort.toString().split('.').last,
+        "sort_order": sortOrder.toString().split('.').last
+      });
+      List<dynamic> list = json.decode(sessionStatus);
+      boxIteratorItems = list
+          .map<BoxIteratorItems>((json) => BoxIteratorItems.fromJson(json))
+          .toList();
+    } on PlatformException catch (e) {
+      print(e.message);
+      boxIteratorItems = List();
+    }
+    return boxIteratorItems;
+  }
+
+  static Future<List<BoxIteratorItems>> loadFromFolders(
+      String folderId, SortFilter sort, SortOrder sortOrder) async {
+    List<BoxIteratorItems> boxIteratorItems;
+    try {
+      final String sessionStatus =
+          await _channel.invokeMethod('loadFolderItems', {
+        "folder_id": folderId,
+        "sort": sort.toString().split('.').last,
+        "sort_order": sortOrder.toString().split('.').last
+      });
+      List<dynamic> list = json.decode(sessionStatus);
+      boxIteratorItems = list
+          .map<BoxIteratorItems>((json) => BoxIteratorItems.fromJson(json))
+          .toList();
+    } on PlatformException catch (e) {
+      print(e.message);
+      boxIteratorItems = List();
+    }
+    return boxIteratorItems;
+  }
+
+  static Future<List<BoxIteratorItems>> searchFiles(String searchString) async {
+    List<BoxIteratorItems> boxIteratorItems;
+    try {
+      final String sessionStatus = await _channel
+          .invokeMethod('searchFiles', {"search_string": searchString});
       List<dynamic> list = json.decode(sessionStatus);
       boxIteratorItems = list
           .map<BoxIteratorItems>((json) => BoxIteratorItems.fromJson(json))
@@ -119,3 +165,7 @@ class FlutterBox {
 }
 
 enum Status { SUCCESS, FAILURE }
+
+enum SortFilter { NONE, ID, NAME, DATE, SIZE }
+
+enum SortOrder { DESC, ASC }

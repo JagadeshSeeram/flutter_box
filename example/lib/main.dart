@@ -95,7 +95,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> loadFromRootFolder() async {
     List<BoxIteratorItems> boxIteratorItems;
     try {
-      boxIteratorItems = await FlutterBox.loadRootFolder;
+      boxIteratorItems =
+          await FlutterBox.loadRootFolder(SortFilter.NAME, SortOrder.DESC);
     } on PlatformException catch (e) {
       boxIteratorItems = List();
     }
@@ -108,7 +109,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> loadFromFolder(String folderId) async {
     List<BoxIteratorItems> boxIteratorItems;
     try {
-      boxIteratorItems = await FlutterBox.loadFromFolders(folderId);
+      boxIteratorItems = await FlutterBox.loadFromFolders(
+          folderId, SortFilter.NAME, SortOrder.ASC);
     } on PlatformException catch (e) {
       boxIteratorItems = List();
     }
@@ -136,8 +138,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (status != null) {
         print(status);
       }
-    } on PlatformException catch (e) {
-    }
+    } on PlatformException catch (e) {}
   }
 
   File _image;

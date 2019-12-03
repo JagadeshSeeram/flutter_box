@@ -5,6 +5,7 @@ import android.webkit.MimeTypeMap;
 
 import com.box.androidsdk.content.BoxApiFile;
 import com.box.androidsdk.content.BoxApiFolder;
+import com.box.androidsdk.content.BoxApiSearch;
 import com.box.androidsdk.content.BoxConfig;
 import com.box.androidsdk.content.BoxConstants;
 import com.box.androidsdk.content.BoxException;
@@ -14,9 +15,10 @@ import com.box.androidsdk.content.models.BoxDownload;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
 import com.box.androidsdk.content.models.BoxIteratorItems;
-import com.box.androidsdk.content.models.BoxOrder;
 import com.box.androidsdk.content.models.BoxSession;
+import com.box.androidsdk.content.requests.BoxRequest;
 import com.box.androidsdk.content.requests.BoxRequestsFile;
+import com.box.androidsdk.content.requests.BoxRequestsFolder;
 import com.box.androidsdk.content.requests.BoxResponse;
 
 import org.json.JSONArray;
@@ -25,7 +27,8 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.lang.reflect.Field;
+import java.util.HashMap;
 
 import io.flutter.Log;
 import io.flutter.plugin.common.MethodCall;
@@ -53,9 +56,18 @@ public class FlutterBoxPlugin implements MethodCallHandler {
     private static final String LOAD_FOLDER_ITEMS = "loadFolderItems";
     private static final String UPLOAD_FILE = "uploadFile";
     private static final String DOWNLOAD_FILE = "downloadFile";
+    private static final String SEARCH_FILES = "searchFiles";
 
     private static final String FAILURE = "FAILURE";
     private static final String SUCCESS = "SUCCESS";
+    private BoxApiSearch searchApi;
+
+
+    public static final String[] REQUIRED_FIELDS = new String[]{
+            BoxItem.FIELD_NAME,
+            BoxItem.FIELD_CREATED_AT, BoxItem.FIELD_MODIFIED_AT, BoxItem.FIELD_TYPE, BoxItem.FIELD_ID
+    };
+
 
     /**
      * Plugin registration.
@@ -93,31 +105,31 @@ public class FlutterBoxPlugin implements MethodCallHandler {
             if (mSession == null) {
                 initSession();
             } else {
-                loadFolderItems(null);
+                loadFolderItems(call, result);
             }
         } else if (method.equals(LOAD_FOLDER_ITEMS)) {
             if (mSession == null) {
                 initSession();
             } else {
-                String folderId = call.arguments();
-                loadFolderItems(folderId);
+                loadFolderItems(call, result);
             }
         } else if (method.equals(UPLOAD_FILE)) {
             if (mSession == null) {
                 initSession();
             } else {
-                String filePath = call.argument("filePath");
-                String fileName = call.argument("fileName");
-                String folderId = call.argument("folderId");
-                uploadFile(filePath, fileName, folderId);
+                uploadFile(call, result);
             }
         } else if (method.equals(DOWNLOAD_FILE)) {
             if (mSession == null) {
                 initSession();
             } else {
-                String fileId = call.argument("fileId");
-                String targetFilePath = call.argument("targetFilePath");
-                downloadFile(targetFilePath, fileId);
+                downloadFile(call, result);
+            }
+        } else if (method.equals(SEARCH_FILES)) {
+            if (mSession == null) {
+                initSession();
+            } else {
+                searchFiles(call, result);
             }
         } else {
             result.notImplemented();
@@ -139,6 +151,7 @@ public class FlutterBoxPlugin implements MethodCallHandler {
             public void onAuthCreated(BoxAuthentication.BoxAuthenticationInfo info) {
                 mFolderApi = new BoxApiFolder(mSession);
                 mFileApi = new BoxApiFile(mSession);
+                searchApi = new BoxApiSearch(mSession);
                 if (!TextUtils.isEmpty(call.method)) {
                     if (call.method.equals(INIT_SESSION)) {
                         new Thread(new Runnable() {
@@ -149,19 +162,15 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                             }
                         });
                     } else if (call.method.equals(LOAD_ROOT_FOLDER)) {
-                        loadFolderItems(null);
+                        loadFolderItems(call, result);
                     } else if (call.method.equals(LOAD_FOLDER_ITEMS)) {
-                        String folderId = call.arguments();
-                        loadFolderItems(folderId);
+                        loadFolderItems(call, result);
                     } else if (call.method.equals(UPLOAD_FILE)) {
-                        String filePath = call.argument("filePath");
-                        String folderId = call.argument("folderId");
-                        String fileName = call.argument("fileName");
-                        uploadFile(filePath, fileName, folderId);
+                        uploadFile(call, result);
                     } else if (call.method.equals(DOWNLOAD_FILE)) {
-                        String fileId = call.argument("fileId");
-                        String targetFilePath = call.argument("targetFilePath");
-                        downloadFile(targetFilePath, fileId);
+                        downloadFile(call, result);
+                    } else if (call.method.equals(SEARCH_FILES)) {
+                        searchFiles(call, result);
                     }
                 }
             }
@@ -207,7 +216,14 @@ public class FlutterBoxPlugin implements MethodCallHandler {
     }
 
     //Method to demonstrate fetching folder items from the root folder
-    private void loadFolderItems(final String folderId) {
+    private void loadFolderItems(MethodCall call, final Result result) {
+        final String folderId = call.argument("folderId");
+        String sort = call.argument("sort");
+        if (!TextUtils.isEmpty(sort) && sort.equalsIgnoreCase("none")) {
+            sort = null;
+        }
+        final String finalSort = sort;
+        final String sortOrder = call.argument("sort_order");
         new Thread() {
             @Override
             public void run() {
@@ -215,19 +231,37 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                     //Api to fetch root folder
                     BoxIteratorItems folderItems;
                     if (TextUtils.isEmpty(folderId)) {
-                        folderItems = mFolderApi.getItemsRequest(BoxConstants.ROOT_FOLDER_ID).send();
+                        BoxRequest request = mFolderApi.getItemsRequest(BoxConstants.ROOT_FOLDER_ID).setFields(REQUIRED_FIELDS);
+                        Class<BoxRequest> aClass = (Class<BoxRequest>) request.getClass();
+                        Field mQueryMap;
+                        try {
+                            mQueryMap = aClass.getSuperclass().getSuperclass().getDeclaredField("mQueryMap");
+                            mQueryMap.setAccessible(true);
+                            HashMap<String, String> mQueryMapValue = (HashMap<String, String>) mQueryMap.get(request);
+                            if (!TextUtils.isEmpty(finalSort)) {
+                                mQueryMapValue.put("sort", finalSort);
+                            }
+                            if (!TextUtils.isEmpty(sortOrder)) {
+                                mQueryMapValue.put("direction", sortOrder);
+                            }
+                            mQueryMap.set(request, mQueryMapValue);
+                        } catch (IllegalAccessException e) {
+                            e.printStackTrace();
+                        } catch (NoSuchFieldException e) {
+                            e.printStackTrace();
+                        }
+                        folderItems = ((BoxRequestsFolder.GetFolderItems) request).send();
                     } else {
                         folderItems = mFolderApi.getFolderWithAllItems(folderId).send().getItemCollection();
                     }
-                    ArrayList<BoxOrder> sortOrders = folderItems.getSortOrders();
                     final JSONArray jsonArray = new JSONArray();
                     for (BoxItem boxItem : folderItems) {
                         JSONObject jsonObject = new JSONObject();
                         try {
                             jsonObject.put("id", boxItem.getId());
                             jsonObject.put("name", boxItem.getName());
-//                            jsonObject.put("created_at", boxItem.getCreatedAt().getTime());
-//                            jsonObject.put("modified_at", boxItem.getModifiedAt().getTime());
+                            jsonObject.put("created_at", boxItem.getCreatedAt().getTime());
+                            jsonObject.put("modified_at", boxItem.getModifiedAt().getTime());
                             jsonObject.put("is_folder", boxItem instanceof BoxFolder);
                             jsonArray.put(jsonObject);
                         } catch (JSONException e) {
@@ -242,13 +276,22 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                     });
                 } catch (BoxException e) {
                     e.printStackTrace();
-                    result.error(FAILURE, "Unable to load folder items", null);
+                    registrar.activity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            result.error(FAILURE, "Unable to load folder items", null);
+                        }
+                    });
+
                 }
             }
         }.start();
     }
 
-    private void uploadFile(final String filePath, final String fileName, final String destinationFolderId) {
+    private void uploadFile(MethodCall call, final Result result) {
+        final String filePath = call.argument("filePath");
+        final String destinationFolderId = call.argument("folderId");
+        final String fileName = call.argument("fileName");
         new Thread() {
             @Override
             public void run() {
@@ -289,7 +332,9 @@ public class FlutterBoxPlugin implements MethodCallHandler {
 
     }
 
-    private void downloadFile(final String targetFile, final String fileId) {
+    private void downloadFile(MethodCall call, final Result result) {
+        final String fileId = call.argument("fileId");
+        final String targetFile = call.argument("targetFilePath");
         new Thread() {
             @Override
             public void run() {
@@ -323,6 +368,48 @@ public class FlutterBoxPlugin implements MethodCallHandler {
             type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
         }
         return type;
+    }
+
+    private void searchFiles(MethodCall call, final Result result) {
+        final String searchString = call.argument("search_string");
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    BoxIteratorItems folderItems = searchApi.getSearchRequest(searchString)
+                            .setFields(REQUIRED_FIELDS)
+                            .send();
+                    final JSONArray jsonArray = new JSONArray();
+                    for (BoxItem boxItem : folderItems) {
+                        JSONObject jsonObject = new JSONObject();
+                        try {
+                            jsonObject.put("id", boxItem.getId());
+                            jsonObject.put("name", boxItem.getName());
+                            jsonObject.put("created_at", boxItem.getCreatedAt().getTime());
+                            jsonObject.put("modified_at", boxItem.getModifiedAt().getTime());
+                            jsonObject.put("is_folder", boxItem instanceof BoxFolder);
+                            jsonArray.put(jsonObject);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    registrar.activity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            result.success(jsonArray.toString());
+                        }
+                    });
+                } catch (BoxException e) {
+                    registrar.activity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            result.error(FAILURE, "Upload failure!", null);
+                        }
+                    });
+                }
+            }
+        }).start();
     }
 
 }

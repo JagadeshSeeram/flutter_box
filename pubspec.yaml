@@ -1,6 +1,6 @@
 name: flutter_box
 description: A Flutter plugin for using the native Box SDKs, Where you can view the directory struture and upload/download the file.
-version: 0.0.4
+version: 0.0.5
 author: Jagadesh Seeram <seeram.jagadesh@gmail.com>
 homepage: https://github.com/JgdshSeerm/flutter_box
 
