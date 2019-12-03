@@ -14,7 +14,7 @@ Download Files from box
 
 Minor bug fixes
 
-## 0.0.4
+## 0.0.5
 
 1. Added Sorting - Name, Id, Size, Date along with Ascending and Descending
 2. Seaching with the box
