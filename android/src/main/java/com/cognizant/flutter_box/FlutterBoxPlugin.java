@@ -28,6 +28,8 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import io.flutter.Log;
@@ -64,8 +66,8 @@ public class FlutterBoxPlugin implements MethodCallHandler {
 
 
     public static final String[] REQUIRED_FIELDS = new String[]{
-            BoxItem.FIELD_NAME,
-            BoxItem.FIELD_CREATED_AT, BoxItem.FIELD_MODIFIED_AT, BoxItem.FIELD_TYPE, BoxItem.FIELD_ID
+            BoxItem.FIELD_ALLOWED_SHARED_LINK_ACCESS_LEVELS,
+            BoxItem.FIELD_CREATED_AT, BoxItem.FIELD_MODIFIED_AT, BoxItem.FIELD_TYPE, BoxItem.FIELD_ID, BoxConstants.FIELD_SIZE
     };
 
 
@@ -263,6 +265,7 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                             jsonObject.put("created_at", boxItem.getCreatedAt().getTime());
                             jsonObject.put("modified_at", boxItem.getModifiedAt().getTime());
                             jsonObject.put("is_folder", boxItem instanceof BoxFolder);
+                            jsonObject.put("size", boxItem.getSize());
                             jsonArray.put(jsonObject);
                         } catch (JSONException e) {
                             e.printStackTrace();
@@ -372,6 +375,9 @@ public class FlutterBoxPlugin implements MethodCallHandler {
 
     private void searchFiles(MethodCall call, final Result result) {
         final String searchString = call.argument("search_string");
+        final ArrayList<String> limitFileExtensions = call.argument("file_extensions");
+        Object[] toArray = limitFileExtensions.toArray();
+        final String[] limitFileExtensionsArray = Arrays.copyOf(toArray, toArray.length, String[].class);
         new Thread(new Runnable() {
 
             @Override
@@ -379,6 +385,7 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                 try {
                     BoxIteratorItems folderItems = searchApi.getSearchRequest(searchString)
                             .setFields(REQUIRED_FIELDS)
+                            .limitFileExtensions(limitFileExtensionsArray)
                             .send();
                     final JSONArray jsonArray = new JSONArray();
                     for (BoxItem boxItem : folderItems) {

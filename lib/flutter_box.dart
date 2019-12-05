@@ -56,11 +56,12 @@ class FlutterBox {
     return status;
   }
 
-  static Future<Status> uploadFile(String filePath, String folderId) async {
+  static Future<Status> uploadFile(
+      String filePath, String fileName, String folderId) async {
     Status status = Status.FAILURE;
     try {
-      final String sessionStatus = await _channel.invokeMethod(
-          'uploadFile', {"filePath": filePath, "folderId": folderId});
+      final String sessionStatus = await _channel.invokeMethod('uploadFile',
+          {"filePath": filePath, "folderId": folderId, "fileName": fileName});
       if (sessionStatus != null && sessionStatus == "SUCCESS") {
         status = Status.SUCCESS;
       }
@@ -147,11 +148,13 @@ class FlutterBox {
     return boxIteratorItems;
   }
 
-  static Future<List<BoxIteratorItems>> searchFiles(String searchString) async {
+  static Future<List<BoxIteratorItems>> searchFiles(String searchString, List fileExtensions) async {
     List<BoxIteratorItems> boxIteratorItems;
     try {
-      final String sessionStatus = await _channel
-          .invokeMethod('searchFiles', {"search_string": searchString});
+      final String sessionStatus = await _channel.invokeMethod('searchFiles', {
+        "search_string": searchString,
+        "file_extensions": fileExtensions
+      });
       List<dynamic> list = json.decode(sessionStatus);
       boxIteratorItems = list
           .map<BoxIteratorItems>((json) => BoxIteratorItems.fromJson(json))

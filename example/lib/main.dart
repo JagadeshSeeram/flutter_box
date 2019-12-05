@@ -122,7 +122,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   uploadSampleFile(String filePath) async {
     try {
-      var status = await FlutterBox.uploadFile(filePath, folderId);
+      var status = await FlutterBox.uploadFile(filePath, "abc.jpg", folderId);
       if (status == Status.SUCCESS) {
         loadFromFolder(folderId);
       }
