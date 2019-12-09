@@ -66,7 +66,7 @@ public class FlutterBoxPlugin implements MethodCallHandler {
 
 
     public static final String[] REQUIRED_FIELDS = new String[]{
-            BoxItem.FIELD_ALLOWED_SHARED_LINK_ACCESS_LEVELS,
+            BoxItem.FIELD_ALLOWED_SHARED_LINK_ACCESS_LEVELS, BoxItem.FIELD_NAME,
             BoxItem.FIELD_CREATED_AT, BoxItem.FIELD_MODIFIED_AT, BoxItem.FIELD_TYPE, BoxItem.FIELD_ID, BoxConstants.FIELD_SIZE
     };
 
@@ -219,7 +219,7 @@ public class FlutterBoxPlugin implements MethodCallHandler {
 
     //Method to demonstrate fetching folder items from the root folder
     private void loadFolderItems(MethodCall call, final Result result) {
-        final String folderId = call.argument("folderId");
+        final String folderId = call.argument("folder_id");
         String sort = call.argument("sort");
         if (!TextUtils.isEmpty(sort) && sort.equalsIgnoreCase("none")) {
             sort = null;
@@ -262,8 +262,8 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                         try {
                             jsonObject.put("id", boxItem.getId());
                             jsonObject.put("name", boxItem.getName());
-                            jsonObject.put("created_at", boxItem.getCreatedAt().getTime());
-                            jsonObject.put("modified_at", boxItem.getModifiedAt().getTime());
+                            jsonObject.put("created_at", boxItem.getCreatedAt() != null ? boxItem.getCreatedAt().getTime() : 0);
+                            jsonObject.put("modified_at", boxItem.getModifiedAt() != null ? boxItem.getModifiedAt().getTime() : 0);
                             jsonObject.put("is_folder", boxItem instanceof BoxFolder);
                             jsonObject.put("size", boxItem.getSize());
                             jsonArray.put(jsonObject);
@@ -393,9 +393,10 @@ public class FlutterBoxPlugin implements MethodCallHandler {
                         try {
                             jsonObject.put("id", boxItem.getId());
                             jsonObject.put("name", boxItem.getName());
-                            jsonObject.put("created_at", boxItem.getCreatedAt().getTime());
-                            jsonObject.put("modified_at", boxItem.getModifiedAt().getTime());
+                            jsonObject.put("created_at", boxItem.getCreatedAt() != null ? boxItem.getCreatedAt().getTime() : 0);
+                            jsonObject.put("modified_at", boxItem.getModifiedAt() != null ? boxItem.getModifiedAt().getTime() : 0);
                             jsonObject.put("is_folder", boxItem instanceof BoxFolder);
+                            jsonObject.put("size", boxItem.getSize());
                             jsonArray.put(jsonObject);
                         } catch (JSONException e) {
                             e.printStackTrace();

@@ -24,4 +24,8 @@ Minor bug fixes
 1. Added Searching with filtering - size
 2. Uploading the file with file name
 
+## 0.0.7
+
+Bux Fixes
+
 

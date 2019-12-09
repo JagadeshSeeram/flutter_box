@@ -96,7 +96,7 @@ class _MyHomePageState extends State<MyHomePage> {
     List<BoxIteratorItems> boxIteratorItems;
     try {
       boxIteratorItems =
-          await FlutterBox.loadRootFolder(SortFilter.NAME, SortOrder.DESC);
+          await FlutterBox.loadRootFolder(SortFilter.NAME, SortOrder.ASC);
     } on PlatformException catch (e) {
       boxIteratorItems = List();
     }
